@@ -12,7 +12,7 @@ async function initApp() {
     if (!user) {
       document.getElementById('app').innerHTML = `<div style="max-width:300px;margin:100px auto;text-align:center;"><h2>Login</h2>
       <input id="em" type="email" placeholder="Email" style="margin:10px 0"><input id="pw" type="password" placeholder="Password" style="margin:10px 0">
-      <button class="btn pri" onclick="doLogin()">Log in / Sign up</button></div>`;
+      <button class="btn pri" onclick="doLogin()">Log in</button><button class="btn" onclick="doSignUp()" style="margin-top:8px">Create account</button></div>`;
       return;
     }
     await loadCloudData();
@@ -26,14 +26,24 @@ window.onload = initApp;
 
 async function doLogin() {
   const email = document.getElementById('em').value, password = document.getElementById('pw').value;
-  let { error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error && error.message.includes('Invalid login')) {
-    const res = await supabase.auth.signUp({ email, password });
-    error = res.error;
-    if(!error) toast('Account created. Please log in again or check email.');
-  }
+  if (!email || !password) return toast('Enter email and password');
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) return toast(error.message);
+  if (!data.session) return toast('Login failed — no session returned.');
   location.reload();
+}
+
+async function doSignUp() {
+  const email = document.getElementById('em').value, password = document.getElementById('pw').value;
+  if (!email || !password) return toast('Enter email and password');
+  const { data, error } = await supabase.auth.signUp({ email, password });
+  if (error) return toast(error.message);
+  if (data.session) { location.reload(); return; }
+  if (data.user && data.user.identities && data.user.identities.length === 0) {
+    toast('An account with this email already exists. Try logging in.');
+  } else {
+    toast('Account created! Check your email to confirm, then log in.');
+  }
 }
 
 async function doLogout() {
